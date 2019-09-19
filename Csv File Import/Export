@@ -1,0 +1,89 @@
+public function rs_testimonial_testimonial_csv_import_process() {
+
+//        var_dump($_FILES);die;
+        if($_POST['btn'] == "import"){
+    
+            $filename=$_FILES["file"]["tmp_name"];    
+             if($_FILES["file"]["size"] > 0)
+             {
+                $file = fopen($filename, "r");
+              while (($getData = fgetcsv($file, 10000, ",")) !== FALSE)
+               {
+                  ///add data in testimonial database
+             
+               }
+
+               fclose($file);  
+            }
+  
+        } else{
+            ob_end_clean();
+            global $wpdb;
+             $getTable = $wpdb->postmeta;
+            $field		 = '';
+            $getField	 = '';
+
+            if ( $getTable ) {
+                        
+               $review_data= $wpdb->get_results( "SELECT * FROM $getTable WHERE `meta_key`='_rs_review_meta_key' ORDER BY `post_id` DESC" );
+                $result	=array();
+                foreach($review_data as $datas){
+                 
+                    $data =maybe_unserialize($datas->meta_value);
+                    $post=get_post($datas->post_id);
+
+
+                    $result[] = array(
+                        'id' => $post->ID,
+                        'name' => $data['name'],
+                        'email' => $data['email'],
+                        'company_name' => $data['company_name'],
+                        'position' => $data['position'],
+                        'star_rating' => $data['star_rating'],
+                        'post_title' => $post->post_title,
+                        'post_content' => $post->post_content,
+                        'image' => get_the_post_thumbnail_url( $datas->post_id, array( 200, 200) ),
+                        'post_date' => $post->post_date,
+                    );
+        
+                }
+
+                $getField = "ID,Name,Email,Company Name,Position,Star Rating,Testimonial Title,Testimonial,Image,Date";
+                $requestedTable	 = $getTable;
+
+                if ( ! $requestedTable ) {
+                //error occurred
+                wp_die( "Can't get datanase columns info." );
+                }
+
+                $fieldsCount = 10;
+
+                $sub		 = substr_replace( $getField, '', -1 );
+                $fields		 = $sub . "\n"; // Get fields names
+                $csv_file_name	 = $getTable . '_' . date( 'Ymd_His' ) . '.csv';
+
+                // Get fields values with last comma excluded
+                foreach ( $result as $row ) {
+                foreach ( $row as $data ) {
+                    $value	 = str_replace( array( "\n", "\n\r", "\r\n", "\r" ), "\t", $data ); // Replace new line with tab
+                    $value	 = str_getcsv( $value, ",", "\"", "\\" ); // SEQUENCING DATA IN CSV FORMAT, REQUIRED PHP >= 5.3.0
+                    $fields	 .= $value[ 0 ] . ','; // Separate fields with comma
+                }
+                $fields	 = substr_replace( $fields, '', -1 ); // Remove extra space at end of string
+                $fields	 .= "\n"; // Force new line if loop complete
+                }
+
+                //header("Content-type: text/x-csv");
+                header( "Content-type: text/csv" );
+                header( "Content-Transfer-Encoding: binary" );
+                header( "Content-Disposition: attachment; filename=" . $csv_file_name );
+                header( "Content-type: application/x-msdownload" );
+                header( "Pragma: no-cache" );
+                header( "Expires: 0" );
+
+                echo $fields;
+                exit;
+            }
+        }
+
+    }
